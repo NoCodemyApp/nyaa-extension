@@ -1,8 +1,7 @@
-export default new class extends AbstractSource {
+export default new class {
     constructor() {
-        super();
         this.url = 'https://sukebei.nyaa.si';
-        this.name = 'Nyaa';
+        this.name = 'Sukebei';
     }
 
     /**
@@ -33,9 +32,11 @@ export default new class extends AbstractSource {
                     hash = hashMatch ? hashMatch[1].toLowerCase() : '';
                 }
 
-                const seedersMatch = row.match(/<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(\d+)<\/td>/);
-                const seeders = seedersMatch ? parseInt(seedersMatch[1]) : 0;
-                const leechers = seedersMatch ? parseInt(seedersMatch[2]) : 0;
+                // Angepasste Regex für Sukebei-Struktur
+                const statsMatch = row.match(/<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(\d+)<\/td>\s*<td[^>]*>(\d+)<\/td>/);
+                const seeders = statsMatch ? parseInt(statsMatch[1]) : 0;
+                const leechers = statsMatch ? parseInt(statsMatch[2]) : 0;
+                const downloads = statsMatch ? parseInt(statsMatch[3]) : 0;
 
                 const sizeMatch = row.match(/(\d+(?:\.\d+)?)\s*(GiB|MiB|KiB|TiB)/);
                 let size = 0;
@@ -50,6 +51,11 @@ export default new class extends AbstractSource {
                 const dateMatch = row.match(/data-timestamp="(\d+)"/);
                 const date = dateMatch ? new Date(parseInt(dateMatch[1]) * 1000) : new Date();
 
+                // Hash-Fallback falls kein Magnet-Link vorhanden
+                if (!hash && finalLink) {
+                    hash = this.generateHash(finalLink);
+                }
+
                 if (hash && finalLink) {
                     results.push({
                         title,
@@ -57,7 +63,7 @@ export default new class extends AbstractSource {
                         hash,
                         seeders: seeders >= 30000 ? 0 : seeders,
                         leechers: leechers >= 30000 ? 0 : leechers,
-                        downloads: 0,
+                        downloads,
                         size,
                         accuracy: verified ? 'high' : 'medium',
                         date
@@ -83,7 +89,8 @@ export default new class extends AbstractSource {
                 searchQuery += ` ${episode.toString().padStart(2, '0')}`;
             }
             
-            let searchUrl = `${this.url}/?f=0&c=1_0&s=seeders&o=desc&q=${encodeURIComponent(searchQuery)}`;
+            // Sukebei verwendet c=0_0 für alle Kategorien
+            let searchUrl = `${this.url}/?f=0&c=0_0&s=seeders&o=desc&q=${encodeURIComponent(searchQuery)}`;
             
             if (resolution && resolution !== '') {
                 searchUrl += `+${resolution}p`;
@@ -112,7 +119,7 @@ export default new class extends AbstractSource {
         
         for (const title of titles) {
             const searchQuery = `${title} batch`;
-            let searchUrl = `${this.url}/?f=0&c=1_0&s=seeders&o=desc&q=${encodeURIComponent(searchQuery)}`;
+            let searchUrl = `${this.url}/?f=0&c=0_0&s=seeders&o=desc&q=${encodeURIComponent(searchQuery)}`;
             
             if (resolution && resolution !== '') {
                 searchUrl += `+${resolution}p`;
@@ -157,6 +164,16 @@ export default new class extends AbstractSource {
         }
         
         return uniqueResults.slice(0, 20);
+    }
+
+    generateHash(link) {
+        let hash = 0;
+        for (let i = 0; i < link.length; i++) {
+            const char = link.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(16).padStart(40, '0').substring(0, 40);
     }
 
     async test() {
