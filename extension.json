@@ -1,8 +1,18 @@
-{
-  "name": "Nyaa Extension",
-  "version": "1.0.0",
-  "author": "NoCodemyApp",
-  "description": "Extension für Nyaa.si Torrents",
-  "main": "https://raw.githubusercontent.com/NoCodemyApp/nyaa-extension/main/nyaa-extension.js",
-  "type": "torrent"
-}
+[
+  {
+    "name": "Nyaa Extension",
+    "id": "nyaa-extension",
+    "version": "1.0.0",
+    "type": "torrent",
+    "accuracy": "medium",
+    "ratio": 0,
+    "media": "sub",
+    "languages": [
+      "US",
+      "JP"
+    ],
+    "icon": "https://nyaa.si/static/favicon.png",
+    "update": "gh:NoCodemyApp/nyaa-extension",
+    "code": "gh:NoCodemyApp/nyaa-extension/nyaa-extension"
+  }
+]
