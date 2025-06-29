@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "author": "NoCodemyApp",
   "description": "Extension für Nyaa.si Torrents",
-  "main": "https://raw.githubusercontent.com/NoCodemyApp/nyaa-extension/main/.js",
-  "type": "torrent",
-  "icon": "https://nyaa.si/static/favicon.png",
-  "website": "https://nyaa.si"
+  "main": "https://raw.githubusercontent.com/NoCodemyApp/nyaa-extension/main/nyaa-extension.js",
+  "type": "torrent"
 }
