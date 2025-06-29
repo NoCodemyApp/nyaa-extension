@@ -12,7 +12,7 @@
       "JP"
     ],
    "icon": "https://sukebei.nyaa.si/static/favicon.png",
-    "update": "gh:NoCodemyApp/sukebei-extension",
-    "code": "gh:NoCodemyApp/nyaa-extension/sukebei-extension"
+    "update": "gh:NoCodemyApp/nyaa-extension",
+    "code": "gh:NoCodemyApp/nyaa-extension/sukebei-extension.js"
   }
 ]
