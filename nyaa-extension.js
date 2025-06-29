@@ -5,75 +5,102 @@ export default class NyaaExtension {
     }
 
     // Einzelne Episode suchen
-    async single(options) {
-        const { titles = [], episode, resolution = '', exclusions = [] } = options;
+   async single(options) {
+    try {
+        const { titles, episode, resolution, exclusions } = options || {};
         const results = [];
 
-        // Sichere Behandlung von titles - kann String oder Array sein
-        const titleArray = Array.isArray(titles) ? titles : [titles].filter(Boolean);
+        // Sichere Behandlung von titles
+        let titleArray = [];
+        if (Array.isArray(titles)) {
+            titleArray = titles;
+        } else if (typeof titles === 'string') {
+            titleArray = [titles];
+        } else if (titles) {
+            titleArray = [String(titles)];
+        }
 
         for (const title of titleArray) {
-            let searchQuery = `${title}`;
+            let searchQuery = String(title);
             if (episode) {
-                searchQuery += ` ${episode.toString().padStart(2, '0')}`;
+                searchQuery += ` ${String(episode).padStart(2, '0')}`;
             }
 
-            const searchResults = await this.searchTorrents(searchQuery, resolution, exclusions);
-            results.push(...searchResults);
+            const searchResults = await this.searchTorrents(searchQuery, resolution || '', exclusions || []);
+            
+            // Sichere Array-Behandlung
+            if (Array.isArray(searchResults)) {
+                results.push(...searchResults);
+            }
         }
 
         return this.filterAndSortResults(results, 'single');
+    } catch (error) {
+        console.error('Fehler in single():', error);
+        return [];
     }
+}
 
-    // Batch-Downloads suchen
-    async batch(options) {
-        const { titles = [], resolution = '', exclusions = [] } = options;
+async batch(options) {
+    try {
+        const { titles, resolution, exclusions } = options || {};
         const results = [];
 
-        const titleArray = Array.isArray(titles) ? titles : [titles].filter(Boolean);
+        let titleArray = [];
+        if (Array.isArray(titles)) {
+            titleArray = titles;
+        } else if (typeof titles === 'string') {
+            titleArray = [titles];
+        } else if (titles) {
+            titleArray = [String(titles)];
+        }
 
         for (const title of titleArray) {
-            const searchQuery = `${title} batch`;
-            const searchResults = await this.searchTorrents(searchQuery, resolution, exclusions);
-            results.push(...searchResults.map(result => ({ ...result, type: 'batch' })));
+            const searchQuery = `${String(title)} batch`;
+            const searchResults = await this.searchTorrents(searchQuery, resolution || '', exclusions || []);
+            
+            if (Array.isArray(searchResults)) {
+                const batchResults = searchResults.map(result => ({ ...result, type: 'batch' }));
+                results.push(...batchResults);
+            }
         }
 
         return this.filterAndSortResults(results, 'batch');
+    } catch (error) {
+        console.error('Fehler in batch():', error);
+        return [];
     }
+}
 
-    // Filme suchen
-    async movie(options) {
-        const { titles = [], resolution = '', exclusions = [] } = options;
+async movie(options) {
+    try {
+        const { titles, resolution, exclusions } = options || {};
         const results = [];
 
-        const titleArray = Array.isArray(titles) ? titles : [titles].filter(Boolean);
+        let titleArray = [];
+        if (Array.isArray(titles)) {
+            titleArray = titles;
+        } else if (typeof titles === 'string') {
+            titleArray = [titles];
+        } else if (titles) {
+            titleArray = [String(titles)];
+        }
 
         for (const title of titleArray) {
-            const searchResults = await this.searchTorrents(title, resolution, exclusions);
-            results.push(...searchResults.map(result => ({ ...result, type: 'movie' })));
+            const searchResults = await this.searchTorrents(String(title), resolution || '', exclusions || []);
+            
+            if (Array.isArray(searchResults)) {
+                const movieResults = searchResults.map(result => ({ ...result, type: 'movie' }));
+                results.push(...movieResults);
+            }
         }
 
         return this.filterAndSortResults(results, 'movie');
+    } catch (error) {
+        console.error('Fehler in movie():', error);
+        return [];
     }
-
-    // Rest der Funktionen bleibt gleich...
-    async searchTorrents(query, resolution, exclusions) {
-        try {
-            let searchUrl = `${this.baseUrl}/?f=0&c=1_0&s=seeders&o=desc&q=${encodeURIComponent(query)}`;
-            
-            if (resolution && resolution !== '') {
-                searchUrl += `+${resolution}p`;
-            }
-
-            const response = await fetch(searchUrl);
-            const html = await response.text();
-
-            return this.parseTorrentResults(html, exclusions);
-        } catch (error) {
-            console.error('Fehler beim Suchen auf Nyaa:', error);
-            return [];
-        }
-    }
+}
 
     // Sichere Behandlung von exclusions
     parseTorrentResults(html, exclusions = []) {
