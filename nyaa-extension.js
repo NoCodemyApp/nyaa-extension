@@ -143,7 +143,8 @@ export default class NyaaExtension {
 
                     const linkMatch = row.match(/href="([^"]*\.torrent[^"]*)"/);
                     if (!linkMatch) continue;
-                    const link = linkMatch[1].startsWith('http') ? linkMatch[1] : `${this.baseUrl}${linkMatch[1]}`;
+                    const link = linkMatch[1].startsWith('http') ? linkMatch[1] : 
+                    `${this.baseUrl}${linkMatch[1]}`;
 
                     const magnetMatch = row.match(/href="(magnet:[^"]+)"/);
                     const finalLink = magnetMatch ? magnetMatch[1] : link;
