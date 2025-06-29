@@ -1,7 +1,7 @@
 // Hayase Extension für Nyaa.si
 export default class NyaaExtension {
     constructor() {
-        this.baseUrl = 'https://nyaa.si';
+        this.baseUrl = 'https://sukebei.nyaa.si';
     }
 
     async single(options) {
