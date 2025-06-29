@@ -1,7 +1,5 @@
 // Hayase Extension für Nyaa.si
-
-
-    async single(options) {
+async single(options) {
     try {
         const { titles, episode, resolution, exclusions } = options || {};
         const results = [];
