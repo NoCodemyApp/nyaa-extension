@@ -1,7 +1,7 @@
 [
   {
     "name": "Nyaa Extension",
-    "id": "nyaa-extension",
+    "id": "sukebei-extension",
     "version": "1.0.0",
     "type": "torrent",
     "accuracy": "medium",
@@ -11,8 +11,8 @@
       "US",
       "JP"
     ],
-    "icon": "https://nyaa.si/static/favicon.png",
-    "update": "gh:NoCodemyApp/nyaa-extension",
-    "code": "gh:NoCodemyApp/nyaa-extension/nyaa-extension"
+   "icon": "https://sukebei.nyaa.si/static/favicon.png",
+    "update": "gh:NoCodemyApp/sukebei-extension",
+    "code": "gh:NoCodemyApp/sukebei-extension/sukebei-extension"
   }
 ]
