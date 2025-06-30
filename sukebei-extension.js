@@ -30,60 +30,81 @@ export default new class {
   }
 
   /* ---------- HTML → Ergebnisse -------------------------------- */
-  parseResults (html, exclusions = []) {
-    const out  = [];
-    const rows = html.match(/<tr class="(?:default|success|danger)"[\s\S]*?<\/tr>/g) || [];
+parseResults (html, exclusions = []) {
+  const out  = [];
+  const rows = html.match(/<tr class="(?:default|success|danger)"[\s\S]*?<\/tr>/g) || [];
 
-    for (let i = 0; i < rows.length; i++) {
-      try {
-        const row = rows[i];
-        const tMatch = row.match(/title="([^"]+)"/);
-        if (!tMatch) continue;
-        const title = tMatch[1];
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      const row = rows[i];
 
-        let skip = false;
-        for (const ex of exclusions)
-          if (title.toLowerCase().includes(ex.toLowerCase())) { skip = true; break; }
-        if (skip) continue;
+      /* ---------- Titel -------------------------------------- */
+      const mTitle = row.match(/title="([^"]+)"/);
+      if (!mTitle) continue;
+      const title = mTitle[1];
 
-        const mMag = row.match(/href="(magnet:[^"]+)"/);
-        const mTor = row.match(/href="([^"]+\.torrent)"/);
-        const link = mMag ? mMag[1] : (mTor ? this.url + mTor[1] : '');
-        if (!link) continue;
+      // Exclusions
+      if (exclusions.some(x => title.toLowerCase().includes(x.toLowerCase())))
+        continue;
 
-        let hash = '';
-        if (mMag) {
-          const h = mMag[1].match(/btih:([a-f0-9]{40})/i);
-          if (h) hash = h[1].toLowerCase();
-        }
-        if (!hash) hash = this.generateHash(link);
+      /* ---------- Link / Hash -------------------------------- */
+      const mMag = row.match(/href="(magnet:[^"]+)"/);
+      const mTor = row.match(/href="([^"]+\.torrent)"/);
+      const link = mMag ? mMag[1] : (mTor ? this.url + mTor[1] : '');
+      if (!link) continue;
 
-        /* Zahlen-Spalten */
-        const nums = [];
-        row.replace(/<td[^>]*>(\d+)<\/td>/g, (_, n) => { nums.push(parseInt(n,10)); return _; });
-        const len = nums.length;
-        const seeders   = len >= 3 ? nums[len-3] : 0;
-        const leechers  = len >= 2 ? nums[len-2] : 0;
-        const downloads = len >= 1 ? nums[len-1] : 0;
+      let hash = '';
+      if (mMag) {
+        const h = mMag[1].match(/btih:([a-f0-9]{40})/i);
+        if (h) hash = h[1].toLowerCase();
+      }
+      if (!hash) hash = this.generateHash(link);
 
-        /* Größe */
-        const s = row.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)/);
-        const mul = {KiB:1024, MiB:1<<20, GiB:1<<30, TiB:1<<40};
-        const size = s ? Math.round(parseFloat(s[1]) * (mul[s[2]]||1)) : 0;
+      /* ---------- Zahlen ------------------------------------- */
+      const nums = [];
+      row.replace(/<td[^>]*>(\d+)<\/td>/g, (_, n) => { nums.push(parseInt(n,10)); return _; });
+      const len       = nums.length;
+      const seeders   = len >= 3 ? nums[len-3] : 0;
+      const leechers  = len >= 2 ? nums[len-2] : 0;
+      const downloads = len >= 1 ? nums[len-1] : 0;
 
-        const ts   = row.match(/data-timestamp="(\d+)"/);
-        const date = ts ? new Date(parseInt(ts[1],10)*1000) : new Date();
+      /* ---------- Größe -------------------------------------- */
+      const s   = row.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)/);
+      const mul = {KiB:1024, MiB:1<<20, GiB:1<<30, TiB:1<<40};
+      const size = s ? Math.round(parseFloat(s[1]) * (mul[s[2]]||1)) : 0;
 
-        out.push({
-          title, link, hash,
-          seeders, leechers, downloads,
-          size, date,
-          accuracy: row.indexOf('class="success"') !== -1 ? 'high' : 'medium'
-        });
-      } catch { /* Reihe überspringen */ }
-    }
-    return out;
+      const ts   = row.match(/data-timestamp="(\d+)"/);
+      const date = ts ? new Date(parseInt(ts[1],10)*1000) : new Date();
+
+      /* ---------- Trusted / Remake / Default ----------------- */
+      const cls = (row.match(/<tr\s+class="([^"]+)"/i) || [])[1] || 'default';
+      let status   = 'default';
+      let accuracy = 'medium';
+      let priority = 2;
+
+      if (cls === 'success') {          // grün
+        status   = 'trusted';
+        accuracy = 'high';
+        priority = 0;
+      } else if (cls === 'danger') {    // rot
+        status   = 'remake';
+        accuracy = 'low';
+        priority = 1;
+      }
+
+      out.push({
+        title, link, hash,
+        seeders, leechers, downloads,
+        size, date,
+        accuracy,
+        status,
+        priority
+      });
+    } catch { /* Zeile überspringen */ }
   }
+  return out;
+}
+
 
   /* ---------- gemeinsame Suche ---------------------------------- */
   async _search ({ titles, episode, resolution, exclusions = [], batch = false }) {
@@ -124,7 +145,8 @@ export default new class {
 
   /* ---------- Sortieren / Duplikate ------------------------------ */
   filterResults (arr) {
-    arr.sort((a,b) => b.seeders - a.seeders);
+   // erst Farbe (priority), dann Seeder
+    arr.sort((a,b) => (a.priority - b.priority) || (b.seeders - a.seeders));
     if (arr.length) arr[0].type = 'best';
     const seen = {}, uniq = [];
     for (const r of arr) if (!seen[r.hash]) { seen[r.hash] = 1; uniq.push(r); }
