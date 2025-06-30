@@ -23,7 +23,7 @@ export default new class {
   /* ---------- Suchseite laden ---------------------------------- */
   async loadSearch (query, res = '') {
     const tag = /^\d+$/.test(res) ? ` ${res}p` : '';
-    const url = `${this.url}/?f=0&c=0_0&s=seeders&o=desc&q=` +
+    const url = `${this.url}/?f=0&c=2_2&s=seeders&o=desc&q=` +
                 encodeURIComponent(query + tag);
     try { return await this.fetchRaw(url); }
     catch { return ''; }
