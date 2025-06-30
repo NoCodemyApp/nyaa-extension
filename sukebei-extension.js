@@ -29,21 +29,34 @@ export default new class {
     catch { return ''; }
   }
 
-  /* ---------- HTML → Ergebnisse -------------------------------- */
+/* ---------- HTML → Ergebnisse -------------------------------- */
 parseResults (html, exclusions = []) {
   const out  = [];
   const rows = html.match(/<tr class="(?:default|success|danger)"[\s\S]*?<\/tr>/g) || [];
 
-  for (let i = 0; i < rows.length; i++) {
+  for (const row of rows) {
     try {
-      const row = rows[i];
+      /* ---------- Trusted / Remake / Default ----------------- */
+      const cls = (row.match(/<tr\s+class="([^"]+)"/i) || [])[1] || 'default';
+      let status   = 'default';   // weiss
+      let accuracy = 'medium';
+      let priority = 2;           // ganz unten
+
+      if (cls === 'success') {      // grün
+        status   = 'trusted';
+        accuracy = 'high';
+        priority = 0;
+      } else if (cls === 'danger') { // rot
+        status   = 'remake';
+        accuracy = 'low';
+        priority = 1;
+      }
 
       /* ---------- Titel -------------------------------------- */
       const mTitle = row.match(/title="([^"]+)"/);
       if (!mTitle) continue;
       const title = mTitle[1];
 
-      // Exclusions
       if (exclusions.some(x => title.toLowerCase().includes(x.toLowerCase())))
         continue;
 
@@ -69,28 +82,12 @@ parseResults (html, exclusions = []) {
       const downloads = len >= 1 ? nums[len-1] : 0;
 
       /* ---------- Größe -------------------------------------- */
-      const s   = row.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)/);
+      const g = row.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)/);
       const mul = {KiB:1024, MiB:1<<20, GiB:1<<30, TiB:1<<40};
-      const size = s ? Math.round(parseFloat(s[1]) * (mul[s[2]]||1)) : 0;
+      const size = g ? Math.round(parseFloat(g[1]) * (mul[g[2]]||1)) : 0;
 
       const ts   = row.match(/data-timestamp="(\d+)"/);
       const date = ts ? new Date(parseInt(ts[1],10)*1000) : new Date();
-
-      /* ---------- Trusted / Remake / Default ----------------- */
-      const cls = (row.match(/<tr\s+class="([^"]+)"/i) || [])[1] || 'default';
-      let status   = 'default';
-      let accuracy = 'medium';
-      let priority = 2;
-
-      if (cls === 'success') {          // grün
-        status   = 'trusted';
-        accuracy = 'high';
-        priority = 0;
-      } else if (cls === 'danger') {    // rot
-        status   = 'remake';
-        accuracy = 'low';
-        priority = 1;
-      }
 
       out.push({
         title, link, hash,
