@@ -1,9 +1,11 @@
-/* Sukebei-Nyaa Extension – Fix für CORS + “Any”-Auflösung */
-const CORS = 'https://cors.isomorphic-git.org/';   // endet mit «/»
+/*  Sukebei-Nyaa Extension – CORS-tauglich  */
+const CORS_PROXY = 'https://cors.isomorphic-git.org/';        // beliebiger Proxy der Access-Control-Header setzt
 
 export default new class {
-  url  = 'https://sukebei.nyaa.si';
-  name = 'Sukebei';
+  constructor () {
+    this.url  = 'https://sukebei.nyaa.si';
+    this.name = 'Sukebei';
+  }
 
   /* zentraler Netz-Abruf über Proxy */
   async fetchRaw (target) {
