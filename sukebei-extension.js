@@ -10,12 +10,25 @@ export default new class {
   /* -------- HTTP-Abruf über Proxy -------------------------------- */
   async fetchRaw(target) {
     // → https://cors…/https://sukebei.nyaa.si/…
-    async fetchRaw(target) {
+  async function fetchRaw(target) {
   const res = await fetch(CORS_PROXY + encodeURIComponent(target));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
+ /* -------- HTTP-Abruf über Fallback-Proxy -------------------------------- */   
+const FALLBACK_PROXY = 'https://cors.isomorphic-git.org/';
+
+async function fetchRaw(target) {
+  const tryProxy = async (base) => {
+    const res = await fetch(base + encodeURIComponent(target));
+    if (res.ok) return res.text();
+    throw new Error();
+  };
+  try        { return await tryProxy(CORS_PROXY); }
+  catch (_)  { return await tryProxy(FALLBACK_PROXY); }
+}
+    
   /* -------- einzelne Suchseite laden ----------------------------- */
   async loadSearch (query, resolution = '') {
     const resTag = /^\d+$/.test(resolution) ? ` ${resolution}p` : '';
