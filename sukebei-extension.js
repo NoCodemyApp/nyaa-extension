@@ -10,7 +10,7 @@ export default new class {
   /* -------- HTTP-Abruf über Proxy -------------------------------- */
   async fetchRaw (target) {
     // → https://cors…/https://sukebei.nyaa.si/…
-    const res = await fetch(CORS_PROXY + target);
+    const res = await fetch(CORS_PROXY + encodeURIComponent(target));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.text();
   }
@@ -128,7 +128,7 @@ export default new class {
   }
 
   async test () {
-    try { return (await fetch(CORS_PROXY + this.url)).ok; }
+    try { return (await fetch(CORS_PROXY + encodeURIComponent(this.url))).ok; }
     catch { return false; }
   }
 }();
