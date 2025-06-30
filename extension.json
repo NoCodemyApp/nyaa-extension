@@ -11,8 +11,8 @@
       "US",
       "JP"
     ],
-   "icon": "https://sukebei.nyaa.si/static/favicon.png",
-    "update": "https://raw.githubusercontent.com/NoCodemyApp/nyaa-extension/main/extension.json",
-    "code": "https://raw.githubusercontent.com/NoCodemyApp/nyaa-extension/main/sukebei-extension.js"
+    "icon": "https://sukebei.nyaa.si/static/favicon.png",
+    "update": "gh:NoCodemyApp/nyaa-extension@main",
+    "code":   "gh:NoCodemyApp/nyaa-extension@main/sukebei-extension.js"
   }
 ]
