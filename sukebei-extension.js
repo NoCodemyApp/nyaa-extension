@@ -1,149 +1,147 @@
-/*  Sukebei-Nyaa Extension für Hayase – CORS-tauglich  */
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';   // beliebiger Proxy mit Access-Control-Header
+/*  Sukebei-Nyaa Extension für Hayase */
+const PRIMARY_PROXY  = 'https://api.allorigins.win/raw?url=';
+const FALLBACK_PROXY = 'https://cors.isomorphic-git.org/';
 
 export default new class {
+
   constructor () {
     this.url  = 'https://sukebei.nyaa.si';
     this.name = 'Sukebei';
   }
 
-  /* -------- HTTP-Abruf über Proxy -------------------------------- */
-  async fetchRaw(target) {
-    // → https://cors…/https://sukebei.nyaa.si/…
-  async function fetchRaw(target) {
-  const res = await fetch(CORS_PROXY + encodeURIComponent(target));
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
-}
-
- /* -------- HTTP-Abruf über Fallback-Proxy -------------------------------- */   
-const FALLBACK_PROXY = 'https://cors.isomorphic-git.org/';
-
-async function fetchRaw(target) {
-  const tryProxy = async (base) => {
-    const res = await fetch(base + encodeURIComponent(target));
-    if (res.ok) return res.text();
-    throw new Error();
-  };
-  try        { return await tryProxy(CORS_PROXY); }
-  catch (_)  { return await tryProxy(FALLBACK_PROXY); }
-}
-    
-  /* -------- einzelne Suchseite laden ----------------------------- */
-  async loadSearch (query, resolution = '') {
-    const resTag = /^\d+$/.test(resolution) ? ` ${resolution}p` : '';
-    const url = `${this.url}/?f=0&c=0_0&s=seeders&o=desc&q=` +
-                encodeURIComponent(query + resTag);
-    try   { return await this.fetchRaw(url); }
-    catch { return ''; }          // leer = keine Treffer oder Netzfehler
+  /* ---------- Netzabruf mit Proxy + Fallback -------------------- */
+  async fetchRaw (target) {
+    const tryProxy = async (base) => {
+      const res = await fetch(base + encodeURIComponent(target));
+      if (res.ok) return res.text();
+      throw new Error();
+    };
+    try       { return await tryProxy(PRIMARY_PROXY);  }
+    catch (_) { return await tryProxy(FALLBACK_PROXY); }
   }
 
-  /* -------- HTML → TorrentResult[ ] ------------------------------ */
+  /* ---------- Suchseite laden ---------------------------------- */
+  async loadSearch (query, res = '') {
+    const tag = /^\d+$/.test(res) ? ` ${res}p` : '';
+    const url = `${this.url}/?f=0&c=0_0&s=seeders&o=desc&q=` +
+                encodeURIComponent(query + tag);
+    try { return await this.fetchRaw(url); }
+    catch { return ''; }
+  }
+
+  /* ---------- HTML → Ergebnisse -------------------------------- */
   parseResults (html, exclusions = []) {
-    const results = [];
-    const rows = html.match(/<tr class="(?:default|success|danger)"[\s\S]*?<\/tr>/g) ?? [];
+    const out  = [];
+    const rows = html.match(/<tr class="(?:default|success|danger)"[\s\S]*?<\/tr>/g) || [];
 
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
       try {
-        const title = (row.match(/title="([^"]+)"/) ?? [])[1];
-        if (!title) continue;
-        if (exclusions.some(x => title.toLowerCase().includes(x.toLowerCase()))) continue;
+        const row = rows[i];
+        const tMatch = row.match(/title="([^"]+)"/);
+        if (!tMatch) continue;
+        const title = tMatch[1];
 
-        const magnet = (row.match(/href="(magnet:[^"]+)"/) ?? [])[1];
-        const tRel   = (row.match(/href="([^"]+\.torrent)"/) ?? [])[1];
-        const torrent = tRel ? `${this.url}${tRel}` : null;
-        const link    = magnet || torrent;
+        let skip = false;
+        for (const ex of exclusions)
+          if (title.toLowerCase().includes(ex.toLowerCase())) { skip = true; break; }
+        if (skip) continue;
+
+        const mMag = row.match(/href="(magnet:[^"]+)"/);
+        const mTor = row.match(/href="([^"]+\.torrent)"/);
+        const link = mMag ? mMag[1] : (mTor ? this.url + mTor[1] : '');
         if (!link) continue;
 
         let hash = '';
-        if (magnet) {
-          const m = magnet.match(/btih:([a-f0-9]{40})/i);
-          hash = m ? m[1].toLowerCase() : '';
+        if (mMag) {
+          const h = mMag[1].match(/btih:([a-f0-9]{40})/i);
+          if (h) hash = h[1].toLowerCase();
         }
         if (!hash) hash = this.generateHash(link);
 
-        const nums = [...row.matchAll(/<td[^>]*>(\d+)<\/td>/g)].map(m => +m[1]);
-        const seeders   = nums.at(-3) ?? 0;
-        const leechers  = nums.at(-2) ?? 0;
-        const downloads = nums.at(-1) ?? 0;
+        /* Zahlen-Spalten */
+        const nums = [];
+        row.replace(/<td[^>]*>(\d+)<\/td>/g, (_, n) => { nums.push(parseInt(n,10)); return _; });
+        const len = nums.length;
+        const seeders   = len >= 3 ? nums[len-3] : 0;
+        const leechers  = len >= 2 ? nums[len-2] : 0;
+        const downloads = len >= 1 ? nums[len-1] : 0;
 
-        const s   = row.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)/);
-        const mul = {KiB:1024, MiB:2**20, GiB:2**30, TiB:2**40};
-        const size = s ? Math.round(parseFloat(s[1]) * (mul[s[2]] || 1)) : 0;
+        /* Größe */
+        const s = row.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB)/);
+        const mul = {KiB:1024, MiB:1<<20, GiB:1<<30, TiB:1<<40};
+        const size = s ? Math.round(parseFloat(s[1]) * (mul[s[2]]||1)) : 0;
 
-        const ts   = (row.match(/data-timestamp="(\d+)"/) ?? [])[1];
-        const date = ts ? new Date(+ts * 1000) : new Date();
-        const verified = /class="success"/.test(row);
+        const ts   = row.match(/data-timestamp="(\d+)"/);
+        const date = ts ? new Date(parseInt(ts[1],10)*1000) : new Date();
 
-        results.push({
+        out.push({
           title, link, hash,
           seeders, leechers, downloads,
           size, date,
-          accuracy: verified ? 'high' : 'medium'
+          accuracy: row.indexOf('class="success"') !== -1 ? 'high' : 'medium'
         });
-      } catch { /* Zeile überspringen */ }
+      } catch { /* Reihe überspringen */ }
     }
-    return results;
+    return out;
   }
 
-  /* -------- Hauptsuche (single / batch / movie) ------------------ */
+  /* ---------- gemeinsame Suche ---------------------------------- */
   async _search ({ titles, episode, resolution, exclusions = [], batch = false }) {
-    if (!titles?.length) throw new Error('No titles provided');
-    const out = [];
+    const collected = [];
 
-    for (let t of titles) {
-      if (!batch && episode) t += ` ${String(episode).padStart(2,'0')}`;
-      if (batch)             t += ' batch';
+    for (let name of titles || []) {
+      if (!batch && episode) name += ` ${(''+episode).padStart(2,'0')}`;
+      if (batch) name += ' batch';
 
-      /* 1️⃣ mit Auflösung */
-      let html = await this.loadSearch(t, resolution);
+      /* 1 – mit Auflösung */
+      let html = await this.loadSearch(name, resolution);
       let res  = this.parseResults(html, exclusions);
 
-      /* 2️⃣ ohne Auflösung */
+      /* 2 – ohne Auflösung */
       if (res.length === 0 && /^\d+$/.test(resolution)) {
-        html = await this.loadSearch(t, '');
+        html = await this.loadSearch(name, '');
         res  = this.parseResults(html, exclusions);
       }
 
-      /* 3️⃣ stark gekürzt */
+      /* 3 – gekürzt */
       if (res.length === 0) {
-        const short = t.split(/[:(\[]/)[0].trim();
-        if (short && short !== t) {
+        const short = name.split(/[:(\[]/)[0].trim();
+        if (short && short !== name) {
           html = await this.loadSearch(short, '');
           res  = this.parseResults(html, exclusions);
         }
       }
 
-      if (batch) res = res.map(r => ({ ...r, type: 'batch' }));
-      out.push(...res);
+      if (batch) res = res.map(x => ({ ...x, type: 'batch' }));
+      collected.push(...res);
     }
-    return this.filterResults(out);
+    return this.filterResults(collected);
   }
 
-  /* -------- Hayase-Hooks ----------------------------------------- */
   async single (p) { return this._search({ ...p, batch:false }); }
   async batch  (p) { return this._search({ ...p, batch:true  }); }
   movie = this.single;
 
-  /* -------- Nachbearbeitung -------------------------------------- */
+  /* ---------- Sortieren / Duplikate ------------------------------ */
   filterResults (arr) {
-    arr.sort((a, b) => b.seeders - a.seeders);
+    arr.sort((a,b) => b.seeders - a.seeders);
     if (arr.length) arr[0].type = 'best';
-    const seen = new Set(), uniq = [];
-    for (const r of arr) if (!seen.has(r.hash)) { seen.add(r.hash); uniq.push(r); }
-    return uniq.slice(0, 20);
+    const seen = {}, uniq = [];
+    for (const r of arr) if (!seen[r.hash]) { seen[r.hash] = 1; uniq.push(r); }
+    return uniq.slice(0,20);
   }
 
   generateHash (str) {
     let h = 0;
-    for (let i = 0; i < str.length; i++)
-      h = (h << 5) - h + str.charCodeAt(i) & 0xFFFFFFFF;
-    return Math.abs(h).toString(16).padStart(40, '0').slice(0, 40);
+    for (let i=0;i<str.length;i++)
+      h = (h<<5)-h + str.charCodeAt(i) & 0xFFFFFFFF;
+    return Math.abs(h).toString(16).padStart(40,'0').slice(0,40);
   }
 
   async test () {
-  try {
-    return (await fetch(CORS_PROXY + encodeURIComponent(this.url))).ok;
-  } catch { return false; }
-}
+    try {
+      const res = await fetch(PRIMARY_PROXY + encodeURIComponent(this.url));
+      return res.ok;
+    } catch { return false; }
+  }
 }();
