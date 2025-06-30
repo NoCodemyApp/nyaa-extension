@@ -1,5 +1,5 @@
 /*  Sukebei-Nyaa Extension für Hayase – CORS-tauglich  */
-const CORS_PROXY = 'https://cors.isomorphic-git.org/';   // beliebiger Proxy mit Access-Control-Header
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';   // beliebiger Proxy mit Access-Control-Header
 
 export default new class {
   constructor () {
@@ -8,12 +8,13 @@ export default new class {
   }
 
   /* -------- HTTP-Abruf über Proxy -------------------------------- */
-  async fetchRaw (target) {
+  async fetchRaw(target) {
     // → https://cors…/https://sukebei.nyaa.si/…
-    const res = await fetch(CORS_PROXY + encodeURIComponent(target));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.text();
-  }
+    async fetchRaw(target) {
+  const res = await fetch(CORS_PROXY + encodeURIComponent(target));
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
 
   /* -------- einzelne Suchseite laden ----------------------------- */
   async loadSearch (query, resolution = '') {
@@ -128,7 +129,8 @@ export default new class {
   }
 
   async test () {
-    try { return (await fetch(CORS_PROXY + encodeURIComponent(this.url))).ok; }
-    catch { return false; }
-  }
+  try {
+    return (await fetch(CORS_PROXY + encodeURIComponent(this.url))).ok;
+  } catch { return false; }
+}
 }();
