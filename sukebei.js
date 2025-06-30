@@ -1,7 +1,9 @@
 /*  Sukebei-Nyaa Extension für Hayase */
-const PRIMARY_PROXY  = 'https://api.allorigins.win/raw?url=';
-const FALLBACK_PROXY = 'https://cors.isomorphic-git.org/';
-
+const PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://cors.isomorphic-git.org/',
+  'https://thingproxy.freeboard.io/fetch/'   // kein Encoding nötig
+];
 export default new class {
 
   constructor () {
@@ -10,24 +12,27 @@ export default new class {
   }
 
   /* ---------- Netzabruf mit Proxy + Fallback -------------------- */
-  async fetchRaw (target) {
-    const tryProxy = async (base) => {
+  async fetchRaw(target) {
+  for (const base of PROXIES) {
+    try {
       const res = await fetch(base + encodeURIComponent(target));
       if (res.ok) return res.text();
-      throw new Error();
-    };
-    try       { return await tryProxy(PRIMARY_PROXY);  }
-    catch (_) { return await tryProxy(FALLBACK_PROXY); }
+    } catch (_) {}
   }
+  throw new Error('All proxies failed');
+}
 
   /* ---------- Suchseite laden ---------------------------------- */
   async loadSearch (query, res = '') {
     const tag = /^\d+$/.test(res) ? ` ${res}p` : '';
     const url = `${this.url}/?f=0&c=0_0&s=seeders&o=desc&q=` +
                 encodeURIComponent(query + tag);
-    try { return await this.fetchRaw(url); }
-    catch { return ''; }
+    try   { return await this.fetchRaw(url); }
+  catch (e) {
+    console.error('Sukebei fetch failed', e);   // fürs Dev-Log
+    throw e;                                   // Hayase zeigt es an
   }
+}
 
   /* ---------- HTML → Ergebnisse -------------------------------- */
   parseResults (html, exclusions = []) {
