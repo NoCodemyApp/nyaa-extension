@@ -1,7 +1,7 @@
 [
   {
     "name": "sukebei.Nyaa",
-    "id": "sukebei-extension",
+    "id": "sukebei",
     "version": "0.0.2",  
     "type": "torrent",
     "accuracy": "medium",
